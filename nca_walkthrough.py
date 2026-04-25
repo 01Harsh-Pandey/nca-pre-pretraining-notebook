@@ -148,39 +148,49 @@ def _():
 
 @app.cell(hide_code=True)
 def _():
+    n_ui      = mo.ui.slider(2, 15, value=8,  show_value=True, label="n_colors")
+    steps_ui  = mo.ui.slider(5, 60, value=24, show_value=True, label="steps")
+    grid_ui   = mo.ui.slider(8, 32, value=12, step=4, show_value=True, label="grid")
+    hidden_ui = mo.ui.slider(8, 64, value=16, step=8, show_value=True, label="hidden")
+    seed_ui   = mo.ui.slider(0, 99, value=42, show_value=True, label="seed")
+
     nca_controls = mo.hstack(
         [
             mo.vstack([
                 mo.md("**Alphabet size** $n$"),
-                n_ui := mo.ui.slider(2, 15, value=8, show_value=True, label="n_colors"),
-                mo.md("_Number of distinct cell states_", style="font-size:0.8rem; color:#888"),
+                n_ui,
+                mo.md("_Number of distinct cell states_"),
             ]),
             mo.vstack([
                 mo.md("**Steps**"),
-                steps_ui := mo.ui.slider(5, 60, value=24, show_value=True, label="steps"),
-                mo.md("_Timesteps to simulate_", style="font-size:0.8rem; color:#888"),
+                steps_ui,
+                mo.md("_Timesteps to simulate_"),
             ]),
             mo.vstack([
                 mo.md("**Grid size**"),
-                grid_ui := mo.ui.slider(8, 32, value=12, step=4, show_value=True, label="grid"),
-                mo.md("_Height = Width in cells_", style="font-size:0.8rem; color:#888"),
+                grid_ui,
+                mo.md("_Height = Width in cells_"),
             ]),
             mo.vstack([
                 mo.md("**Hidden units**"),
-                hidden_ui := mo.ui.slider(8, 64, value=16, step=8, show_value=True, label="hidden"),
-                mo.md("_Rule MLP capacity_", style="font-size:0.8rem; color:#888"),
+                hidden_ui,
+                mo.md("_Rule MLP capacity_"),
             ]),
             mo.vstack([
                 mo.md("**Seed**"),
-                seed_ui := mo.ui.slider(0, 99, value=42, show_value=True, label="seed"),
-                mo.md("_Different rule each seed_", style="font-size:0.8rem; color:#888"),
+                seed_ui,
+                mo.md("_Different rule each seed_"),
             ]),
         ],
         gap=2,
         justify="start",
     )
+    return n_ui, steps_ui, grid_ui, hidden_ui, seed_ui, nca_controls
+
+
+@app.cell(hide_code=True)
+def _(nca_controls):
     nca_controls
-    return n_ui, steps_ui, grid_ui, hidden_ui, seed_ui
 
 
 # ── NCA core functions ──────────────────────────────────────────────────────
