@@ -17,7 +17,7 @@ with app.setup:
     import numpy as np
     import matplotlib.pyplot as plt
     from collections import Counter
-    import gzip as _gzip_mod
+    import gzip
     import math
     import marimo as mo
 
@@ -422,7 +422,7 @@ def _(complexity_controls):
 def compute_gzip_ratio(grid):
     """Gzip compression ratio as complexity proxy (0 = trivial, 1 = random)."""
     data       = grid.astype(np.uint8).tobytes()
-    compressed = _gzip_mod.compress(data, compresslevel=9)
+    compressed = gzip.compress(data, compresslevel=9)
     return len(compressed) / len(data)
 
 
