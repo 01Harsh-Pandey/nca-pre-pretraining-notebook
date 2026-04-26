@@ -899,11 +899,10 @@ def _(zoo_regime_ui, zoo_rows_ui, zoo_steps_ui):
             _found.append((_gs[: _T + 1], _r))
         _s += 1
 
-    if not _found:
-        return mo.callout(
-            mo.md("No rules found in this band — try a different regime."),
-            kind="warn",
-        ),
+    mo.stop(
+        not _found,
+        mo.callout(mo.md("No rules found in this band — try a different regime."), kind="warn"),
+    )
 
     _cmap   = plt.cm.get_cmap("tab20", _NC)
     _n_cols = min(_T + 1, 7)
