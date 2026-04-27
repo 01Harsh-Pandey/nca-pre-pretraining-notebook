@@ -315,76 +315,114 @@ def cell_fig4_intro():
     return
 
 
-@app.cell(hide_code=True)
-def cell_fig4_interactive():
-    def make_fig4_chart(pre, rand, metric, y_dom, chance, chance_lbl, title, insight):
-        df = pd.DataFrame({
-            "Layer": LAYERS * 2,
-            "Value": pre + rand,
-            "Condition": ["Pretrained"] * 13 + ["Random Initialised (Null)"] * 13,
-        })
-        
-        base = alt.Chart(df)
-        lines = base.mark_line(point=True, strokeWidth=2.5).encode(
-            x=alt.X("Layer:O", title="Layer (0 = embedding)", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Value:Q", title=metric, scale=alt.Scale(domain=y_dom)),
-            color=alt.Color(
-                "Condition:N",
-                scale=alt.Scale(domain=["Pretrained", "Random Initialised (Null)"], range=[C_BLUE, C_ORANGE]),
-                legend=alt.Legend(orient="bottom", title=None, labelFontSize=12, symbolType="circle")
-            ),
-            tooltip=["Layer:O", "Value:Q", "Condition:N"],
-        )
-        
-        chance_rule = alt.Chart(pd.DataFrame({"y": [chance]})).mark_rule(
-            strokeDash=[6, 3], color=C_GREY, strokeWidth=1.5
-        ).encode(y="y:Q")
-        
-        chance_text = alt.Chart(pd.DataFrame({"y": [chance], "label": [chance_lbl]})).mark_text(
-            align="left", dx=8, dy=-12, color=C_DARK, fontSize=11, fontWeight="bold"
-        ).encode(y="y:Q", x=alt.value(0), text="label:N")
-        
-        chart = (lines + chance_rule + chance_text).properties(
-            width=720, height=360,
-            title=alt.TitleParams(title, subtitle="Comparing signal against the structural null", subtitleColor=C_GREY, fontSize=16, anchor="start")
-        )
-        
-        # We pack the chart and the insight text together into a single layout block
-        return mo.vstack([
-            mo.ui.altair_chart(chart),
-            mo.callout(mo.md(insight), kind="info")
-        ], gap=1.5)
-
-    # 1. Build the Sentiment UI
-    tab_sent = make_fig4_chart(
-        SENT_PRE, SENT_RAND, "Probe Accuracy", [0.45, 0.95], SENT_CHANCE, "Chance (0.50)",
-        "Sentiment Analysis (IMDb) — BERT-base",
-        "⚠️ **The Dead Salmon Moment:** Every pretrained layer looks better than chance — but when compared against *randomly initialised* BERT, **no layer is statistically distinguishable** in early layers. The 'sentiment neurons' are a search artifact."
-    )
-    
-    # 2. Build the POS UI
-    tab_pos = make_fig4_chart(
-        POS_PRE, POS_RAND, "Probe Accuracy", [0.15, 1.00], POS_MAJORITY, "Majority Baseline (0.175)",
-        "Syntax / POS Tagging (CoNLL-2003) — BERT-base",
-        "✅ **Genuine Discovery:** Middle layers (4–6) peak far above the random initialisation null. This **survives** the dead-salmon test — BERT genuinely learns syntactic structure."
-    )
-    
-    # 3. Build the World Models UI
-    tab_world = make_fig4_chart(
-        WORLD_PRE, WORLD_RAND, "Geospatial R²", [0.00, 0.60], 0.0, "Zero (no information)",
-        "World Models (Places) — Pythia-160m",
-        "🌍 **The Embedding Surprise:** Even at Layer 0 (raw embeddings) R² ≈ 0.12. Passing through *random* transformer blocks actually **hurts** the spatial signal. Geography is real — but it mostly lives in the input geometry, not learned representations."
-    )
-
-    # Pack the pre-rendered layouts natively into the tabs
+@app.cell
+def cell_fig4_tabs():
     fig4_tabs = mo.ui.tabs({
-        "🎭 (A) Sentiment — BERT": tab_sent,
-        "🏷️ (B) Syntax/POS — BERT": tab_pos,
-        "🗺️ (C) World Models — Pythia": tab_world,
+        "🎭 (A) Sentiment — BERT": "sentiment",
+        "🏷️ (B) Syntax/POS — BERT": "pos",
+        "🗺️ (C) World Models — Pythia": "world",
     })
-    
-    # FIX: Explicitly return the layout so Marimo paints it to the screen!
-    return fig4_tabs,
+    return (fig4_tabs,)
+
+
+@app.cell(hide_code=True)
+def cell_fig4_tabs_render(fig4_tabs):
+    mo.hstack([fig4_tabs], justify="start")
+    return
+
+
+@app.cell
+def cell_fig4_data(fig4_tabs):
+    tab = fig4_tabs.value
+
+    if tab == "sentiment":
+        pre, rand = SENT_PRE,  SENT_RAND
+        metric    = "Probe Accuracy"
+        y_dom     = [0.45, 0.95]
+        chance    = SENT_CHANCE
+        chance_lbl = "Chance (0.50)"
+        insight = (
+            "⚠️ **The Dead Salmon Moment:** Every pretrained layer looks "
+            "better than chance — but when compared against *randomly "
+            "initialised* BERT, **no layer is statistically distinguishable** "
+            "in early layers. The 'sentiment neurons' are a search artifact."
+        )
+    elif tab == "pos":
+        pre, rand = POS_PRE,   POS_RAND
+        metric    = "Probe Accuracy"
+        y_dom     = [0.15, 1.00]
+        chance    = POS_MAJORITY
+        chance_lbl = "Majority Baseline (0.175)"
+        insight = (
+            "✅ **Genuine Discovery:** Middle layers (4–6) peak far above the "
+            "random initialisation null. This **survives** the dead-salmon "
+            "test — BERT genuinely learns syntactic structure."
+        )
+    else:
+        pre, rand = WORLD_PRE, WORLD_RAND
+        metric    = "Geospatial R²"
+        y_dom     = [0.00, 0.60]
+        chance    = 0.0
+        chance_lbl = "Zero (no information)"
+        insight = (
+            "🌍 **The Embedding Surprise:** Even at Layer 0 (raw embeddings) "
+            "R² ≈ 0.12. Passing through *random* transformer blocks actually "
+            "**hurts** the spatial signal. Geography is real — but it mostly "
+            "lives in the input geometry, not learned representations."
+        )
+
+    df_fig4 = pd.DataFrame({
+        "Layer": LAYERS * 2,
+        "Value": pre + rand,
+        "Condition": ["Pretrained"] * 13 + ["Random Initialised (Null)"] * 13,
+    })
+    return chance, chance_lbl, df_fig4, insight, metric, y_dom
+
+
+@app.cell
+def cell_fig4_chart(chance, chance_lbl, df_fig4, insight, metric, y_dom):
+    base = alt.Chart(df_fig4)
+
+    lines = base.mark_line(point=True, strokeWidth=2.5).encode(
+        x=alt.X("Layer:O", title="Layer (0 = embedding)"),
+        y=alt.Y("Value:Q", title=metric, scale=alt.Scale(domain=y_dom)),
+        color=alt.Color(
+            "Condition:N",
+            scale=alt.Scale(
+                domain=["Pretrained", "Random Initialised (Null)"],
+                range=[C_BLUE, C_ORANGE],
+            ),
+            legend=alt.Legend(orient="bottom"),
+        ),
+        tooltip=["Layer:O", "Value:Q", "Condition:N"],
+    )
+
+    chance_rule = (
+        alt.Chart(pd.DataFrame({"y": [chance]}))
+        .mark_rule(strokeDash=[6, 3], color=C_GREY, strokeWidth=1.5)
+        .encode(y="y:Q")
+    )
+
+    chance_text = (
+        alt.Chart(pd.DataFrame({"y": [chance], "label": [chance_lbl]}))
+        .mark_text(align="left", dx=8, dy=-8, color=C_GREY, fontSize=11)
+        .encode(y="y:Q", x=alt.value(0), text="label:N")
+    )
+
+    fig4_chart = (lines + chance_rule + chance_text).properties(
+        width=640, height=320,
+        title=alt.TitleParams(
+            "Reproduction of Figure 4 — Layer-wise Probing",
+            subtitle="Paper: 'The Dead Salmons of AI Interpretability' (2512.18792)",
+            subtitleFontSize=11,
+        ),
+    )
+
+    mo.vstack([
+        mo.ui.altair_chart(fig4_chart),
+        mo.callout(mo.md(insight), kind="info"),
+    ], gap=1)
+    return
 
 
 @app.cell(hide_code=True)
@@ -886,11 +924,6 @@ def cell_conclusion():
     - Neel Nanda et al. — Open Problems in Mechanistic Interpretability, 2025
     - Kim et al. — TCAV: Quantitative Testing with Concept Activation Vectors, ICML 2018
     - Wang et al. — Interpretability in the Wild: IOI Circuit in GPT-2 Small, 2022
-
-    ---
-
-    *Built with [marimo](https://marimo.io) for the AlphaXiv × Marimo Notebook Competition.*
-    *All experiments are CPU-only and run fully in-browser via WASM.*
     """)
     return
 
