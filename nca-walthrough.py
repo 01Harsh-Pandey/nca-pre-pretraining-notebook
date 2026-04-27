@@ -33,42 +33,46 @@ with app.setup:
 def _():
     mo.md(
         r"""
-        <div style="
-            text-align:center;
-            padding: 4rem 2rem 3rem;
-            background: linear-gradient(160deg, #e8f4fd 0%, #f0f7ff 50%, #e8f4fd 100%);
-            border-radius: 16px;
-            margin-bottom: 0.5rem;
-            border: 1px solid #c7d9f5;
-        ">
-        <div style="font-size:3rem; margin-bottom:1rem;">🧬</div>
-        <h1 style="
-            font-size:2.8rem; font-weight:900; letter-spacing:-1.5px;
-            color:#0f1f4a; margin:0 0 1.2rem; font-family:'Georgia', serif;
-            line-height:1.2; text-align:center;
-        ">
-            Training Language Models<br>via Neural Cellular Automata
-        </h1>
-        <p style="
-            font-size:1.05rem; color:#3a5080; max-width:640px;
-            margin:0 auto 2rem; line-height:1.8; text-align:center;
-        ">
-            What if a transformer learned to reason <em>before</em> seeing a single word of human
-            language? This notebook is an interactive walkthrough of
-            <a href="https://arxiv.org/abs/2603.10055" style="color:#2563eb; font-weight:600;">Lee et al., 2026</a>
-            — MIT CSAIL.
-        </p>
-        <div style="
-            display:inline-flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;
-            background:#fff; border:1px solid #c7d9f5;
-            padding:0.8rem 2rem; border-radius:999px;
-            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
-        ">
-            <span style="color:#1e40af; font-size:0.95rem; font-weight:700;">
-                164M NCA tokens ▶ beats 1.6B tokens of natural language
-            </span>
-            <span style="color:#374151; font-size:0.9rem;">6% better perplexity &nbsp;·&nbsp; 1.6× faster convergence</span>
-        </div>
+        <div style="padding: 2rem 0 1rem 0; max-width: 950px;">
+            <h1 style="
+                font-family: 'Georgia', serif; 
+                font-size: 3.4rem; 
+                font-weight: 400; 
+                color: #111; 
+                letter-spacing: -1px; 
+                margin-bottom: 1.5rem; 
+                line-height: 1.15;
+            ">
+                Training Language Models<br>via Neural Cellular Automata
+            </h1>
+            
+            <p style="
+                font-size: 1.15rem; 
+                color: #333; 
+                line-height: 1.7; 
+                margin-bottom: 2rem;
+            ">
+                What if a transformer learned to reason <em>before</em> seeing a single word of human language? 
+                This notebook is an interactive walkthrough of 
+                <a href="https://arxiv.org/abs/2603.10055" style="color: #2563eb; text-decoration: none; border-bottom: 1px solid rgba(37,99,235,0.4); padding-bottom: 1px;">Lee et al., 2026</a> 
+                — MIT CSAIL.
+            </p>
+            
+            <div style="
+                display: flex; 
+                align-items: center; 
+                gap: 12px; 
+                background: #f8fafc; 
+                border: 1px solid #e2e8f0; 
+                padding: 1rem 1.5rem; 
+                border-radius: 8px;
+            ">
+                <span style="font-size: 1.3rem;">🚀</span>
+                <span style="font-size: 1rem; color: #0f172a;">
+                    <strong style="color: #1e40af;">Key Result:</strong> 164M NCA tokens outperform 1.6B tokens of natural language.
+                    <span style="color: #64748b; margin-left: 8px; font-size: 0.95rem;">(6% better perplexity &nbsp;·&nbsp; 1.6× faster convergence)</span>
+                </span>
+            </div>
         </div>
         """
     )
