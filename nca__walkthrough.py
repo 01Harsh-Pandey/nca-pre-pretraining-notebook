@@ -1114,7 +1114,6 @@ def _():
 
     **Paper:** [arxiv.org/abs/2603.10055](https://arxiv.org/abs/2603.10055) · Lee, Han, Kumar, Agrawal · MIT CSAIL 2026  
     **Code:** [github.com/danihyunlee/nca-pre-pretraining](https://github.com/danihyunlee/nca-pre-pretraining)  
-    **Notebook:** alphaXiv × marimo Notebook Competition
     """)
     return
 
