@@ -35,33 +35,39 @@ def _():
         r"""
         <div style="
             text-align:center;
-            padding: 3.5rem 2rem 2rem;
-            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3e 50%, #0f1a2e 100%);
+            padding: 4rem 2rem 3rem;
+            background: linear-gradient(160deg, #eef2ff 0%, #f0f7ff 50%, #e8f4fd 100%);
             border-radius: 16px;
             margin-bottom: 1rem;
-            border: 1px solid #2a2a5a;
+            border: 1px solid #c7d9f5;
         ">
-        <div style="font-size:3rem; margin-bottom:0.5rem;">🧬</div>
+        <div style="font-size:3.2rem; margin-bottom:1rem;">🧬</div>
         <h1 style="
-            font-size:2.6rem; font-weight:900; letter-spacing:-1.5px;
-            color:#f0f0ff; margin:0 0 1rem; font-family:'Georgia', serif; line-height:1.15;
+            font-size:2.8rem; font-weight:900; letter-spacing:-1.5px;
+            color:#0f1f4a; margin:0 0 1.2rem; font-family:'Georgia', serif;
+            line-height:1.2; text-align:center;
         ">
             Training Language Models<br>via Neural Cellular Automata
         </h1>
-        <p style="font-size:1.1rem; color:#aabbdd; max-width:700px; margin:0 auto 1.5rem; line-height:1.7;">
+        <p style="
+            font-size:1.1rem; color:#3a5080; max-width:660px;
+            margin:0 auto 2rem; line-height:1.75; text-align:center;
+        ">
             What if a transformer learned to reason <em>before</em> seeing a single word of human
             language? This notebook is an interactive walkthrough of
-            <a href="https://arxiv.org/abs/2603.10055" style="color:#7eb8f7;">Lee et al., 2026</a>
+            <a href="https://arxiv.org/abs/2603.10055" style="color:#2563eb; font-weight:600;">Lee et al., 2026</a>
             — MIT CSAIL.
         </p>
         <div style="
-            display:inline-block; background:rgba(126,184,247,0.15);
-            border:1px solid rgba(126,184,247,0.4); padding:0.75rem 2rem;
-            border-radius:999px; color:#c8e0ff; font-size:0.95rem;
-            font-weight:600; letter-spacing:0.5px;
+            display:inline-flex; gap:2rem; flex-wrap:wrap; justify-content:center;
+            background:#ffffff; border:1px solid #c7d9f5;
+            padding:0.85rem 2.2rem; border-radius:999px;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
         ">
-        164M NCA tokens &nbsp;▶&nbsp; beats 1.6B tokens of natural language
-        &nbsp;·&nbsp; 6% better perplexity &nbsp;·&nbsp; 1.6× faster convergence
+            <span style="color:#1e40af; font-size:0.95rem; font-weight:700;">
+                164M NCA tokens ▶ beats 1.6B tokens of natural language
+            </span>
+            <span style="color:#374151; font-size:0.9rem;">6% better perplexity &nbsp;·&nbsp; 1.6× faster convergence</span>
         </div>
         </div>
         """
@@ -320,20 +326,18 @@ def _(art_form, hidden_ui):
     _size   = int(_v["art_size"])
     _hid    = hidden_ui.value
 
-    _gs     = simulate_nca(_nc, _steps, _size, _hid, seed=_seed)
-    _g      = _gs[-1]
-
+    _gs      = simulate_nca(_nc, _steps, _size, _hid, seed=_seed)
+    _g       = _gs[-1]
     _display = smooth_grid(_g, int(_v["smoothing"]), _nc)
     _display = blur_grid(_display, float(_v["blur_sigma"]), _nc)
     _cmap    = build_cmap(_v["palette"], _nc)
 
-    _fig, _ax = plt.subplots(figsize=(9, 9), facecolor="black")
+    _fig, _ax = plt.subplots(figsize=(9, 9), facecolor="white")
     _ax.imshow(_g,       cmap=_cmap, interpolation="nearest", alpha=1.0)
     _ax.imshow(_display, cmap=_cmap, interpolation="nearest", alpha=0.7)
     _ax.set_axis_off()
     _fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
     _fig
-    return
     return
 
 
