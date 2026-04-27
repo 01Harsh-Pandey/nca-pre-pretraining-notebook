@@ -140,84 +140,55 @@ with app.setup:
 # CELL 1 — Hero Banner
 # ============================================================
 @app.cell(hide_code=True)
-def cell_hero(mo):
+def cell_hero():
     mo.md(
-        rf"""
-        <div style="
-            background: linear-gradient(135deg, #2D2D2D 0%, #1a1a2e 100%);
-            border-radius: 16px;
-            padding: 48px 64px;
-            margin-bottom: 24px;
-            text-align: center;
-            color: white;
-            font-family: 'Georgia', serif;
-        ">
-            <div style="font-size: 72px; margin-bottom: 16px;">🐟</div>
+        r"""
+        <div style="padding: 2rem 0 1rem 0; max-width: 950px;">
             <h1 style="
-                font-size: 2.6em;
-                font-weight: 800;
-                margin: 0;
-                color: #FA8072;
+                font-family: 'Georgia', serif; 
+                font-size: 3.4rem; 
+                font-weight: 400; 
+                color: #111; 
+                letter-spacing: -1px; 
+                margin-bottom: 1.5rem; 
+                line-height: 1.15;
             ">
                 The Dead Salmons of AI Interpretability
             </h1>
+            
             <p style="
-                font-size: 1.2em;
-                opacity: 0.85;
-                margin-top: 16px;
-                max-width: 760px;
-                margin-left: auto;
-                margin-right: auto;
-                line-height: 1.6;
+                font-size: 1.15rem; 
+                color: #333; 
+                line-height: 1.7; 
+                margin-bottom: 2rem;
             ">
-                An interactive reproduction of
-                <em>"The Dead Salmons of AI Interpretability"</em>
-                (AlphaXiv 2512.18792, 2025).
-                When statistical guardrails are skipped, even a
-                <strong>frozen random network</strong>
-                can look like it understands language.
+                An interactive reproduction of 
+                <em><a href="https://arxiv.org/abs/2512.18792" style="color: #FA8072; text-decoration: none; border-bottom: 1px solid rgba(250,128,114,0.4); padding-bottom: 1px; font-weight: 600;">"The Dead Salmons of AI Interpretability"</a></em> 
+                (AlphaXiv 2512.18792, 2025). When statistical guardrails are skipped, 
+                even a <strong>frozen random network</strong> can look like it understands language.
             </p>
+            
             <div style="
-                margin-top: 28px;
-                display: flex;
-                justify-content: center;
-                gap: 16px;
-                flex-wrap: wrap;
+                display: flex; 
+                align-items: center; 
+                gap: 12px; 
+                background: #fef9f8; 
+                border: 1px solid #fce8e6; 
+                padding: 1rem 1.5rem; 
+                border-radius: 8px;
             ">
-                <span style="
-                    background: rgba(250,128,114,0.25);
-                    border: 1px solid #FA8072;
-                    border-radius: 20px;
-                    padding: 6px 18px;
-                    font-size: 0.9em;
-                ">📊 Reproduces Figure 4 (A, B, C)</span>
-                <span style="
-                    background: rgba(76,120,168,0.25);
-                    border: 1px solid #4C78A8;
-                    border-radius: 20px;
-                    padding: 6px 18px;
-                    font-size: 0.9em;
-                ">🎲 Interactive P-Hacking Simulator</span>
-                <span style="
-                    background: rgba(84,162,75,0.25);
-                    border: 1px solid #54A24B;
-                    border-radius: 20px;
-                    padding: 6px 18px;
-                    font-size: 0.9em;
-                ">🛡️ Live Hypothesis Testing (Eq. 4)</span>
-                <span style="
-                    background: rgba(255,215,0,0.2);
-                    border: 1px solid #FFD700;
-                    border-radius: 20px;
-                    padding: 6px 18px;
-                    font-size: 0.9em;
-                ">🧠 Full Statistical Framework (Table 1)</span>
+                <span style="font-size: 1.3rem;">🐟</span>
+                <span style="font-size: 1rem; color: #2D2D2D;">
+                    <strong style="color: #d9534f;">Interactive Features:</strong>
+                    <span style="color: #555; margin-left: 8px; font-size: 0.95rem;">
+                        📊 Figure 4 Reproduction &nbsp;·&nbsp; 🎲 P-Hacking Simulator &nbsp;·&nbsp; 🛡️ Live Eq. 4 Testing &nbsp;·&nbsp; 🧠 Framework
+                    </span>
+                </span>
             </div>
         </div>
         """
     )
     return
-
 
 # ============================================================
 # CELL 2 — Origin Story
