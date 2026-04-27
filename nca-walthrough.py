@@ -36,12 +36,12 @@ def _():
         <div style="
             text-align:center;
             padding: 4rem 2rem 3rem;
-            background: linear-gradient(160deg, #eef2ff 0%, #f0f7ff 50%, #e8f4fd 100%);
+            background: linear-gradient(160deg, #e8f4fd 0%, #f0f7ff 50%, #e8f4fd 100%);
             border-radius: 16px;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             border: 1px solid #c7d9f5;
         ">
-        <div style="font-size:3.2rem; margin-bottom:1rem;">🧬</div>
+        <div style="font-size:3rem; margin-bottom:1rem;">🧬</div>
         <h1 style="
             font-size:2.8rem; font-weight:900; letter-spacing:-1.5px;
             color:#0f1f4a; margin:0 0 1.2rem; font-family:'Georgia', serif;
@@ -50,8 +50,8 @@ def _():
             Training Language Models<br>via Neural Cellular Automata
         </h1>
         <p style="
-            font-size:1.1rem; color:#3a5080; max-width:660px;
-            margin:0 auto 2rem; line-height:1.75; text-align:center;
+            font-size:1.05rem; color:#3a5080; max-width:640px;
+            margin:0 auto 2rem; line-height:1.8; text-align:center;
         ">
             What if a transformer learned to reason <em>before</em> seeing a single word of human
             language? This notebook is an interactive walkthrough of
@@ -59,9 +59,9 @@ def _():
             — MIT CSAIL.
         </p>
         <div style="
-            display:inline-flex; gap:2rem; flex-wrap:wrap; justify-content:center;
-            background:#ffffff; border:1px solid #c7d9f5;
-            padding:0.85rem 2.2rem; border-radius:999px;
+            display:inline-flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;
+            background:#fff; border:1px solid #c7d9f5;
+            padding:0.8rem 2rem; border-radius:999px;
             box-shadow: 0 2px 12px rgba(37,99,235,0.10);
         ">
             <span style="color:#1e40af; font-size:0.95rem; font-weight:700;">
@@ -338,7 +338,6 @@ def _(art_form, hidden_ui):
     _ax.set_axis_off()
     _fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
     _fig
-    return
 
 
 # ─────────────────────────────────────────────────────────────────────────────
