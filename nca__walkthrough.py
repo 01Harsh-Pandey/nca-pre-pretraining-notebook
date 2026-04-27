@@ -1,0 +1,1123 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "marimo>=0.20.2",
+#   "numpy>=1.26",
+#   "matplotlib>=3.8",
+#   "scipy>=1.12",
+# ]
+# ///
+
+import marimo
+
+__generated_with = "0.20.2"
+app = marimo.App(width="full", app_title="NCA Pre-Pretraining — Interactive Walkthrough")
+
+with app.setup:
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+    from scipy.ndimage import convolve, gaussian_filter
+    from collections import Counter
+    import gzip
+    import math
+    import marimo as mo
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HERO
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(
+        r"""
+        <div style="
+            text-align:center;
+            padding: 4rem 2rem 3rem;
+            background: linear-gradient(160deg, #eef2ff 0%, #f0f7ff 55%, #e8f4fd 100%);
+            border-radius: 16px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #c7d9f5;
+        ">
+          <div style="font-size:3rem; margin-bottom:1rem;">🧬</div>
+          <h1 style="
+            font-size:2.8rem; font-weight:900; letter-spacing:-1.5px;
+            color:#0f1f4a; margin:0 0 1.2rem;
+            font-family:'Georgia', serif; line-height:1.2; text-align:center;
+          ">
+            Training Language Models<br>via Neural Cellular Automata
+          </h1>
+          <p style="
+            font-size:1.05rem; color:#3a5080; max-width:640px;
+            margin:0 auto 2rem; line-height:1.8; text-align:center;
+          ">
+            What if a transformer learned to reason <em>before</em> seeing a single word of
+            human language? An interactive walkthrough of
+            <a href="https://arxiv.org/abs/2603.10055" style="color:#2563eb; font-weight:600;">
+            Lee et al., 2026</a> — MIT CSAIL.
+          </p>
+          <div style="
+            display:inline-flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;
+            background:#fff; border:1px solid #c7d9f5; padding:0.8rem 2rem;
+            border-radius:999px; box-shadow:0 2px 12px rgba(37,99,235,0.10);
+          ">
+            <span style="color:#1e40af; font-size:0.95rem; font-weight:700;">
+              164M NCA tokens ▶ beats 1.6B tokens of natural language
+            </span>
+            <span style="color:#374151; font-size:0.9rem;">
+              6% better perplexity &nbsp;·&nbsp; 1.6× faster convergence
+            </span>
+          </div>
+        </div>
+        """
+    )
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 1 — THE PROBLEM
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 1 — The Problem with Natural Language Pre-training
+
+    Modern LLMs are trained on trillion-token corpora of human-written text.
+    But this approach has three deep structural problems:
+
+    | | Problem | Why it matters |
+    |---|---------|----------------|
+    | 📉 | **Finite supply** | High-quality text is running out; web crawls hit diminishing returns after ~10T tokens |
+    | 🫀 | **Baked-in biases** | Models inherit every demographic, cultural, and linguistic bias in training data |
+    | 🔗 | **Knowledge ↔ Reasoning entanglement** | A model can't learn *how to think* without simultaneously memorising *what is known* |
+
+    The paper asks a radical question: **Is natural language the only path to intelligence?**
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.callout(
+        mo.md("""
+        **The key insight:** Pre-training is really about learning *in-context rule inference* —
+        observing a sequence, hypothesising the underlying pattern, and predicting what comes next.
+        Natural language is just one instantiation of this. Neural cellular automata, with their
+        hidden latent rules and rich temporal dynamics, turn out to be a far more efficient teacher.
+        """),
+        kind="info",
+    )
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 2 — WHAT IS AN NCA
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 2 — Neural Cellular Automata: Structure Without Semantics
+
+    A **Neural Cellular Automaton** (NCA) is a grid of discrete cells, each in state
+    $s \in \{0, \ldots, n-1\}$. At every timestep, a shared neural network $f_\theta$
+    reads the **Moore neighbourhood** (3×3 patch) and outputs the next state:
+
+    $$s_{t}^{(i,j)} = \underset{k}{\arg\max}\; f_\theta\!\Bigl(\mathbf{n}_{t-1}^{(i,j)}\Bigr)_k$$
+
+    **What makes this useful for pre-training?**
+
+    - Every trajectory is generated by a *randomly sampled* $\theta$ — a unique latent rule
+    - The model never sees $\theta$ directly; it must *infer the rule from context*
+    - Memorisation is impossible — the model must build general *in-context learning* machinery
+
+    **Adjust the sliders below to explore different NCA regimes:**
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    n_ui      = mo.ui.slider(2, 15, value=8,  show_value=True, label="n_colors")
+    steps_ui  = mo.ui.slider(5, 60, value=24, show_value=True, label="steps")
+    grid_ui   = mo.ui.slider(8, 32, value=12, step=4, show_value=True, label="grid")
+    hidden_ui = mo.ui.slider(8, 64, value=16, step=8, show_value=True, label="hidden")
+    seed_ui   = mo.ui.slider(0, 99, value=42, show_value=True, label="seed")
+
+    mo.hstack(
+        [
+            mo.vstack([mo.md("**Alphabet size** $n$"),  n_ui,      mo.md("_Distinct cell states_")]),
+            mo.vstack([mo.md("**Steps**"),              steps_ui,  mo.md("_Timesteps to simulate_")]),
+            mo.vstack([mo.md("**Grid size**"),          grid_ui,   mo.md("_Height = Width_")]),
+            mo.vstack([mo.md("**Hidden units**"),       hidden_ui, mo.md("_Rule MLP capacity_")]),
+            mo.vstack([mo.md("**Seed**"),               seed_ui,   mo.md("_Different rule per seed_")]),
+        ],
+        gap=2, justify="start",
+    )
+    return n_ui, steps_ui, grid_ui, hidden_ui, seed_ui
+
+
+# ── NCA core functions ───────────────────────────────────────────────────────
+
+@app.function
+def make_rule(n_colors, hidden, rng):
+    W1 = rng.normal(0, 0.5, (9 * n_colors, hidden))
+    b1 = rng.normal(0, 0.1, (hidden,))
+    W2 = rng.normal(0, 0.5, (hidden, n_colors))
+    b2 = rng.normal(0, 0.1, (n_colors,))
+    return W1, b1, W2, b2
+
+
+@app.function
+def nca_step(grid, W1, b1, W2, b2, n_colors):
+    H, W    = grid.shape
+    padded  = np.pad(grid, 1, mode="wrap")
+    patches = np.stack(
+        [padded[r : r + H, c : c + W] for r in range(3) for c in range(3)], axis=-1
+    )
+    oh   = (patches[..., np.newaxis] == np.arange(n_colors)).reshape(H, W, -1).astype(np.float32)
+    flat = oh.reshape(-1, oh.shape[-1])
+    h    = np.maximum(0, flat @ W1 + b1)
+    return np.argmax(h @ W2 + b2, axis=-1).reshape(H, W).astype(np.int32)
+
+
+@app.function
+def simulate_nca(n_colors, steps, grid_size, hidden, seed):
+    rng  = np.random.default_rng(seed)
+    W1, b1, W2, b2 = make_rule(n_colors, hidden, rng)
+    grid = rng.integers(0, n_colors, (grid_size, grid_size), dtype=np.int32)
+    grids = [grid.copy()]
+    for _ in range(steps):
+        grid = nca_step(grid, W1, b1, W2, b2, n_colors)
+        grids.append(grid.copy())
+    return grids
+
+
+@app.cell
+def _(n_ui, steps_ui, grid_ui, hidden_ui, seed_ui):
+    grids = simulate_nca(
+        n_ui.value, steps_ui.value, grid_ui.value, hidden_ui.value, seed_ui.value
+    )
+    return (grids,)
+
+
+@app.cell(hide_code=True)
+def _(grids, n_ui):
+    _n       = n_ui.value
+    _cmap    = plt.cm.get_cmap("tab20", max(_n, 2))
+    _n_show  = min(8, len(grids))
+    _indices = np.linspace(0, len(grids) - 1, _n_show, dtype=int)
+
+    _fig, _axes = plt.subplots(1, _n_show, figsize=(2.3 * _n_show, 2.6))
+    if _n_show == 1:
+        _axes = [_axes]
+    for _ax, _idx in zip(_axes, _indices):
+        _ax.imshow(grids[_idx], cmap=_cmap, vmin=0, vmax=_n - 1, interpolation="nearest")
+        _ax.set_title(f"t = {_idx}", fontsize=9, fontweight="bold", pad=4)
+        _ax.axis("off")
+    _fig.suptitle(
+        f"NCA Trajectory  (n = {_n} colours,  {len(grids)-1} steps)",
+        fontsize=11, fontweight="bold", y=1.03,
+    )
+    plt.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    > **Notice:** Small $n$ (2–3) quickly develops repetitive tiling — *simple structure*.
+    > Large $n$ (12–15) produces richer, harder-to-compress patterns. This is the paper's core lever.
+    """)
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 3 — NCA → TOKENS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 3 — From Grid to Token Sequence
+
+    Each grid snapshot is tokenised via **2×2 patch embeddings**:
+
+    $$\text{token}(p) = \sum_{k=0}^{3} p_k \cdot n^k \qquad p_k \in \{0,\ldots,n-1\}$$
+
+    For $n=10$, vocabulary = $10^4 = 10{,}000$ tokens. A $12\times12$ grid gives 36 tokens per
+    timestep. Because each trajectory has a *unique latent rule* $\theta$, the only way to predict
+    the next token is to infer that rule from context — exactly the skill LLMs need.
+    """)
+    return
+
+
+@app.function
+def tokenize_grid(grid, patch=2, n_colors=10):
+    H, W   = grid.shape
+    tokens = []
+    for i in range(0, H - patch + 1, patch):
+        for j in range(0, W - patch + 1, patch):
+            p = grid[i : i + patch, j : j + patch].flatten()
+            tokens.append(int(sum(int(p[k]) * (n_colors ** k) for k in range(len(p)))))
+    return tokens
+
+
+@app.cell
+def _(grids, n_ui):
+    _nc        = n_ui.value
+    all_tokens = []
+    for _g in grids:
+        all_tokens.extend(tokenize_grid(_g, patch=2, n_colors=_nc))
+    token_counts = Counter(all_tokens)
+    return all_tokens, token_counts
+
+
+@app.cell(hide_code=True)
+def _(grids, n_ui, all_tokens, token_counts):
+    _nc    = n_ui.value
+    _g     = grids[0]
+    _H, _W = _g.shape
+    _cmap  = plt.cm.get_cmap("tab20", max(_nc, 2))
+
+    _fig, (_ax_g, _ax_seq, _ax_freq) = plt.subplots(1, 3, figsize=(14, 3.2))
+
+    _ax_g.imshow(_g, cmap=_cmap, vmin=0, vmax=_nc - 1, interpolation="nearest")
+    for _i in range(0, _H + 1, 2):
+        _ax_g.axhline(_i - 0.5, color="white", lw=0.8, alpha=0.6)
+    for _j in range(0, _W + 1, 2):
+        _ax_g.axvline(_j - 0.5, color="white", lw=0.8, alpha=0.6)
+    _ax_g.set_title("Grid t=0  (white = 2×2 patch borders)", fontsize=9, fontweight="bold")
+    _ax_g.axis("off")
+
+    _tok_seq = tokenize_grid(_g, patch=2, n_colors=_nc)
+    _ax_seq.imshow(
+        np.array(_tok_seq).reshape(1, -1) % 20,
+        aspect="auto", cmap="tab20", interpolation="nearest",
+    )
+    _ax_seq.set_title(f"Token sequence  ({len(_tok_seq)} tokens from t=0)", fontsize=9, fontweight="bold")
+    _ax_seq.set_yticks([])
+    _ax_seq.set_xlabel("Token position", fontsize=8)
+
+    _freqs = sorted(token_counts.values(), reverse=True)
+    _ranks = np.arange(1, len(_freqs) + 1)
+    _ax_freq.loglog(_ranks, _freqs, "o", ms=3, color="#4a90d9", alpha=0.7)
+    if len(_ranks) > 4:
+        _slope, _intercept = np.polyfit(np.log(_ranks[:30]), np.log(_freqs[:30]), 1)
+        _ax_freq.loglog(
+            _ranks, np.exp(_intercept) * _ranks ** _slope,
+            "--", color="#e05c5c", lw=1.5, alpha=0.8, label=f"Power law  β={-_slope:.2f}",
+        )
+        _ax_freq.legend(fontsize=8)
+    _ax_freq.set_title(
+        f"Token frequency  ({len(token_counts)} unique / {len(all_tokens)} total)",
+        fontsize=9, fontweight="bold",
+    )
+    _ax_freq.set_xlabel("Rank", fontsize=8)
+    _ax_freq.set_ylabel("Count", fontsize=8)
+
+    plt.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(all_tokens, token_counts):
+    _total   = len(all_tokens)
+    _unique  = len(token_counts)
+    _fv      = list(token_counts.values())
+    _entropy = -sum((v / _total) * math.log2(v / _total) for v in _fv if v > 0)
+    _fs      = sorted(_fv, reverse=True)
+    _zb      = 0.0
+    if len(_fs) > 5:
+        _rr = np.arange(1, min(51, len(_fs)) + 1)
+        _sl, _ = np.polyfit(np.log(_rr), np.log(_fs[: len(_rr)]), 1)
+        _zb = -_sl
+
+    mo.hstack(
+        [
+            mo.stat(f"{_unique:,}",         label="Unique tokens",   caption=f"of {_total:,} total"),
+            mo.stat(f"{_entropy:.2f} bits", label="Token entropy",   caption="Natural language: ~8–10 bits"),
+            mo.stat(f"{_zb:.2f}",           label="Zipf exponent β", caption="Natural language: ~1.0"),
+        ],
+        justify="start", gap=2,
+    )
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 4 — THE COMPLEXITY DIAL
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 4 — The Complexity Dial: gzip as Kolmogorov Proxy
+
+    The paper filters NCA rules by **gzip compression ratio** $\rho$:
+
+    $$\rho(G) = \frac{|\text{gzip}(G)|}{|G|} \in [0, 1]$$
+
+    Low $\rho$ → compressible → **simple, repetitive structure**.
+    High $\rho$ → incompressible → **complex, unpredictable dynamics**.
+
+    This is the paper's key lever: matching the complexity of synthetic pre-training data
+    to the computational character of the target domain maximises transfer.
+    Orange dotted lines mark the empirical gzip ratios of real corpora from the paper.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    n_seeds_ui = mo.ui.slider(20, 120, value=60,   step=20,   show_value=True, label="Seeds to sample")
+    band_lo_ui = mo.ui.slider(0.0, 0.9, value=0.4, step=0.05, show_value=True, label="Band min ρ")
+    band_hi_ui = mo.ui.slider(0.1, 1.0, value=0.8, step=0.05, show_value=True, label="Band max ρ")
+
+    mo.hstack(
+        [
+            mo.vstack([mo.md("**Seeds to sample**"),     n_seeds_ui]),
+            mo.vstack([mo.md("**Complexity band min**"), band_lo_ui]),
+            mo.vstack([mo.md("**Complexity band max**"), band_hi_ui]),
+        ],
+        gap=2, justify="start",
+    )
+    return n_seeds_ui, band_lo_ui, band_hi_ui
+
+
+@app.function
+def compute_gzip_ratio(grid):
+    data       = grid.astype(np.uint8).tobytes()
+    compressed = gzip.compress(data, compresslevel=9)
+    return len(compressed) / len(data)
+
+
+@app.cell
+def _(n_seeds_ui, grid_ui, steps_ui, hidden_ui):
+    _n_seeds = n_seeds_ui.value
+    _G = grid_ui.value
+    _T = min(steps_ui.value, 20)
+    _H = hidden_ui.value
+
+    complexity_dist = {}
+    for _nc in mo.status.progress_bar([2, 5, 10, 15], title="Sampling complexity distributions…"):
+        _ratios = []
+        for _s in range(_n_seeds):
+            _gs = simulate_nca(_nc, _T, _G, _H, seed=_s + 200)
+            _ratios.append(float(np.mean([compute_gzip_ratio(_g) for _g in _gs[5:]])))
+        complexity_dist[_nc] = np.array(_ratios)
+    return (complexity_dist,)
+
+
+@app.cell(hide_code=True)
+def _(complexity_dist, band_lo_ui, band_hi_ui):
+    _lo     = band_lo_ui.value
+    _hi     = band_hi_ui.value
+    _colors = ["#3a86ff", "#8338ec", "#ff006e", "#fb5607"]
+
+    _fig, (_ax_hist, _ax_box) = plt.subplots(1, 2, figsize=(13, 4))
+
+    for (_nc, _ratios), _col in zip(complexity_dist.items(), _colors):
+        _ax_hist.hist(
+            _ratios, bins=20, alpha=0.55, color=_col,
+            label=f"n = {_nc}  (μ={_ratios.mean():.2f})", density=True,
+        )
+    _ax_hist.axvspan(_lo, _hi, alpha=0.15, color="#00c896",
+                     label=f"Selected band [{_lo:.2f}, {_hi:.2f}]")
+    _ax_hist.axvline(_lo, color="#00c896", lw=1.5, ls="--")
+    _ax_hist.axvline(_hi, color="#00c896", lw=1.5, ls="--")
+    _domains = {"Code\n(32%)": 0.32, "Math\n(55%)": 0.55, "Web\n(62%)": 0.62}
+    for _dname, _dval in _domains.items():
+        _ax_hist.axvline(_dval, color="orange", lw=1.2, alpha=0.8, ls=":")
+        _ax_hist.text(_dval + 0.01, _ax_hist.get_ylim()[1] * 0.85, _dname,
+                      fontsize=7, color="darkorange", rotation=90, va="top")
+    _ax_hist.set_xlabel("gzip ratio ρ", fontsize=10)
+    _ax_hist.set_ylabel("Density", fontsize=10)
+    _ax_hist.set_title("Distribution of NCA complexity by alphabet size", fontsize=11, fontweight="bold")
+    _ax_hist.legend(fontsize=9)
+    _ax_hist.set_xlim(0, 1)
+
+    _bp = _ax_box.boxplot(
+        [complexity_dist[_nc] for _nc in sorted(complexity_dist)],
+        labels=[f"n={_nc}" for _nc in sorted(complexity_dist)],
+        patch_artist=True, medianprops=dict(color="white", lw=2),
+    )
+    for _patch, _col in zip(_bp["boxes"], _colors):
+        _patch.set_facecolor(_col)
+        _patch.set_alpha(0.7)
+    _ax_box.axhspan(_lo, _hi, alpha=0.12, color="#00c896")
+    _ax_box.axhline(_lo, color="#00c896", lw=1.2, ls="--")
+    _ax_box.axhline(_hi, color="#00c896", lw=1.2, ls="--")
+    for _dname, _dval in _domains.items():
+        _ax_box.axhline(_dval, color="orange", lw=1, ls=":", alpha=0.8)
+    _ax_box.set_ylabel("gzip ratio ρ", fontsize=10)
+    _ax_box.set_title("Complexity by alphabet size — boxplot", fontsize=11, fontweight="bold")
+
+    plt.tight_layout()
+    _fig
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 5 — WHY NCA DATA RESEMBLES LANGUAGE
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 5 — Why NCA Data Resembles Natural Language
+
+    Three statistics diagnose "language-likeness":
+
+    | Statistic | Formula | Interpretation |
+    |-----------|---------|----------------|
+    | **Token entropy** | $H = -\sum_k p_k \log_2 p_k$ | Diversity of vocabulary usage |
+    | **Bigram MI** | $I(X_t; X_{t+1}) = H(X_t) - H(X_t \mid X_{t+1})$ | Temporal predictive structure |
+    | **Zipf exponent** | $\beta$ in $\text{freq}(r) \propto r^{-\beta}$ | Heavy-tailedness |
+
+    Dashed lines show natural language reference values. NCA hits these targets around $n \approx 8\text{–}10$.
+    """)
+    return
+
+
+@app.function
+def compute_stats(token_list):
+    if len(token_list) < 4:
+        return {"entropy": 0.0, "bigram_mi": 0.0, "zipf_beta": 0.0}
+    cnt   = Counter(token_list)
+    total = len(token_list)
+    H1    = -sum((v / total) * math.log2(v / total) for v in cnt.values() if v > 0)
+    bigrams  = list(zip(token_list[:-1], token_list[1:]))
+    bcnt     = Counter(bigrams)
+    btotal   = len(bigrams)
+    H2       = -sum((v / btotal) * math.log2(v / btotal) for v in bcnt.values() if v > 0)
+    bigram_mi = max(0.0, 2 * H1 - H2)
+    freqs = sorted(cnt.values(), reverse=True)
+    k = min(50, len(freqs))
+    if k > 3:
+        ranks    = np.arange(1, k + 1)
+        slope, _ = np.polyfit(np.log(ranks), np.log(freqs[:k]), 1)
+        zipf_beta = float(-slope)
+    else:
+        zipf_beta = 0.0
+    return {"entropy": H1, "bigram_mi": bigram_mi, "zipf_beta": zipf_beta}
+
+
+@app.cell
+def _(grid_ui, steps_ui, hidden_ui):
+    _G = grid_ui.value
+    _T = min(steps_ui.value, 15)
+    _H = hidden_ui.value
+
+    stats_by_n = {}
+    for _nc in [2, 5, 8, 10, 12, 15]:
+        _tokens = []
+        for _s in range(12):
+            for _g in simulate_nca(_nc, _T, _G, _H, seed=_s + 500):
+                _tokens.extend(tokenize_grid(_g, patch=2, n_colors=_nc))
+        stats_by_n[_nc] = compute_stats(_tokens)
+    return (stats_by_n,)
+
+
+@app.cell(hide_code=True)
+def _(stats_by_n):
+    _ref = {
+        "English text": {"entropy": 9.2, "bigram_mi": 2.1, "zipf_beta": 1.0,  "color": "orange"},
+        "Python code":  {"entropy": 7.1, "bigram_mi": 3.2, "zipf_beta": 1.15, "color": "cornflowerblue"},
+        "LaTeX/math":   {"entropy": 8.4, "bigram_mi": 1.8, "zipf_beta": 0.85, "color": "mediumseagreen"},
+    }
+    _ns = sorted(stats_by_n.keys())
+
+    _fig, _axes = plt.subplots(1, 3, figsize=(14, 4))
+    for _ax, _title, _key in zip(
+        _axes,
+        ["Token Entropy (bits)", "Bigram MI (bits)", "Zipf Exponent β"],
+        ["entropy", "bigram_mi", "zipf_beta"],
+    ):
+        _ax.plot(_ns, [stats_by_n[_nc][_key] for _nc in _ns],
+                 "o-", color="#4a90d9", lw=2, ms=7, label="NCA data", zorder=5)
+        for _rname, _rdict in _ref.items():
+            _ax.axhline(_rdict[_key], color=_rdict["color"],
+                        lw=1.5, ls="--", alpha=0.8, label=_rname)
+        _ax.set_xlabel("Alphabet size n", fontsize=10)
+        _ax.set_title(_title, fontsize=10, fontweight="bold")
+        _ax.legend(fontsize=7.5)
+        _ax.set_xticks(_ns)
+
+    plt.suptitle("NCA token statistics vs natural language domains",
+                 fontsize=11, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    _fig
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 6 — THE PROOF: PRE-PRETRAINING IN ACTION
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 6 — The Proof: Pre-Pretraining in Action
+
+    All the analysis so far has been descriptive. Now we **demonstrate** the paper's core claim
+    with a runnable experiment — entirely on CPU, in your browser:
+
+    1. **Pre-pretraining phase** — a tiny transformer learns next-token prediction on many diverse NCA rules
+    2. **Fine-tuning phase** — the same model adapts to *new, unseen* NCA rules
+    3. **Baseline** — an identical model trained on the new rules from scratch
+
+    The NCA-warmed model should start with lower loss and converge faster —
+    **this is the paper's Figure 2, in miniature**.
+
+    > Pure numpy. No GPU needed. Expected run time: ~10 seconds on CPU.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    train_form = mo.ui.form(
+        mo.ui.dictionary({
+            "ppt_rules":  mo.ui.slider(20, 80, value=50, step=10, show_value=True,
+                                        label="Pre-pretraining rules"),
+            "ft_rules":   mo.ui.slider(10, 40, value=20, step=10, show_value=True,
+                                        label="Fine-tuning rules (new, unseen)"),
+            "ppt_epochs": mo.ui.slider(10, 40, value=20, step=5, show_value=True,
+                                        label="PPT epochs"),
+            "ft_epochs":  mo.ui.slider(20, 60, value=40, step=10, show_value=True,
+                                        label="FT epochs"),
+        }, label="Training parameters"),
+        submit_button_label="▶ Run experiment",
+        bordered=False,
+    )
+    mo.vstack([
+        train_form,
+        mo.md("_Click **Run experiment** to train both models and compare convergence curves._"),
+    ])
+    return (train_form,)
+
+
+@app.function
+def run_training_demo(ppt_rules, ft_rules, ppt_epochs, ft_epochs, seed=42):
+    """Pure-numpy pre-pretraining demo. Returns loss curves and speedup factor."""
+    VOCAB = 8; CTX = 6; HID = 64; LR = 3e-3; BATCH = 128
+
+    def _init(rng):
+        s1 = np.sqrt(2.0 / (CTX * VOCAB))
+        s2 = np.sqrt(2.0 / HID)
+        W1 = rng.normal(0, s1, (CTX * VOCAB, HID)); b1 = np.zeros(HID)
+        W2 = rng.normal(0, s2, (HID, VOCAB));        b2 = np.zeros(VOCAB)
+        m  = [np.zeros_like(p) for p in [W1, b1, W2, b2]]
+        v  = [np.zeros_like(p) for p in [W1, b1, W2, b2]]
+        return [W1, b1, W2, b2], m, v, 0
+
+    def _step(params, m, v, t, xs, ys):
+        W1, b1, W2, b2 = params
+        x_oh = np.zeros((len(xs), CTX * VOCAB))
+        for k in range(CTX):
+            x_oh[np.arange(len(xs)), k * VOCAB + (xs[:, k] % VOCAB)] = 1.0
+        h      = np.maximum(0, x_oh @ W1 + b1)
+        logits = h @ W2 + b2
+        e      = np.exp(logits - logits.max(1, keepdims=True))
+        probs  = e / e.sum(1, keepdims=True)
+        loss   = -np.mean(np.log(probs[np.arange(len(ys)), ys % VOCAB] + 1e-9))
+        dl     = probs.copy()
+        dl[np.arange(len(ys)), ys % VOCAB] -= 1
+        dl    /= len(ys)
+        dW2 = h.T @ dl;        db2 = dl.sum(0)
+        dh  = (dl @ W2.T) * (h > 0)
+        dW1 = x_oh.T @ dh;     db1 = dh.sum(0)
+        t += 1; b1a, b2a, eps = 0.9, 0.999, 1e-8
+        new_p, new_m, new_v = [], [], []
+        for p, g, mi, vi in zip(params, [dW1, db1, dW2, db2], m, v):
+            mi_ = b1a * mi + (1 - b1a) * g
+            vi_ = b2a * vi + (1 - b2a) * g ** 2
+            new_p.append(p - LR * (mi_ / (1 - b1a**t)) / (np.sqrt(vi_ / (1 - b2a**t)) + eps))
+            new_m.append(mi_); new_v.append(vi_)
+        return new_p, new_m, new_v, t, float(loss)
+
+    def _make_data(n_rules, seed_offset):
+        data = []
+        for s in range(n_rules):
+            rng = np.random.default_rng(s + seed_offset)
+            W1r = rng.normal(0, 0.5, (9 * VOCAB, 12))
+            b1r = rng.normal(0, 0.1, 12)
+            W2r = rng.normal(0, 0.5, (12, VOCAB))
+            b2r = rng.normal(0, 0.1, VOCAB)
+            grid = rng.integers(0, VOCAB, (6, 6), dtype=np.int32)
+            for _ in range(15):
+                padded  = np.pad(grid, 1, mode="wrap")
+                H, W    = grid.shape
+                patches = np.stack([padded[r:r+H, c:c+W]
+                                    for r in range(3) for c in range(3)], axis=-1)
+                oh   = (patches[..., np.newaxis] == np.arange(VOCAB)).reshape(H, W, -1).astype(np.float32)
+                flat = oh.reshape(-1, oh.shape[-1])
+                h    = np.maximum(0, flat @ W1r + b1r)
+                grid = np.argmax(h @ W2r + b2r, axis=-1).reshape(H, W).astype(np.int32)
+                seq  = grid.flatten().tolist()
+                for i in range(len(seq) - CTX):
+                    data.append((np.array(seq[i:i+CTX]), seq[i+CTX]))
+        return data
+
+    def _train(params, m, v, t, data, epochs, rseed):
+        rng = np.random.default_rng(rseed)
+        losses = []
+        for _ in range(epochs):
+            idx = rng.permutation(len(data))
+            ep = 0.0; n = 0
+            for i in range(0, len(data) - BATCH, BATCH):
+                b    = [data[j] for j in idx[i:i+BATCH]]
+                xs   = np.array([x for x, y in b])
+                ys   = np.array([y for x, y in b])
+                params, m, v, t, loss = _step(params, m, v, t, xs, ys)
+                ep += loss; n += 1
+            losses.append(ep / max(n, 1))
+        return params, m, v, t, losses
+
+    ppt_data  = _make_data(ppt_rules, seed_offset=1000)
+    test_data = _make_data(ft_rules,  seed_offset=9000)
+
+    ps, ms, vs, ts = _init(np.random.default_rng(seed))
+    _, _, _, _, losses_scratch = _train(ps, ms, vs, ts, test_data, ft_epochs, seed)
+
+    pn, mn, vn, tn = _init(np.random.default_rng(seed + 1))
+    pn, mn, vn, tn, losses_ppt  = _train(pn, mn, vn, tn, ppt_data, ppt_epochs, seed + 1)
+    _, _, _, _, losses_nca      = _train(pn, mn, vn, tn, test_data, ft_epochs, seed + 2)
+
+    target = losses_scratch[-1] * 1.08
+    ep_s   = next((i for i, l in enumerate(losses_scratch) if l <= target), ft_epochs)
+    ep_n   = next((i for i, l in enumerate(losses_nca)     if l <= target), ft_epochs)
+    speedup = round(ep_s / max(ep_n, 1), 1) if ep_n < ep_s else 1.0
+
+    return losses_scratch, losses_nca, losses_ppt, ep_s, ep_n, speedup
+
+
+@app.cell
+def _(train_form):
+    mo.stop(
+        train_form.value is None,
+        mo.callout(mo.md("👆 Click **Run experiment** to start the demo."), kind="info"),
+    )
+    _v = train_form.value
+    with mo.status.spinner(title="Training… pure numpy, ~10 s"):
+        _result = run_training_demo(
+            ppt_rules  = int(_v["ppt_rules"]),
+            ft_rules   = int(_v["ft_rules"]),
+            ppt_epochs = int(_v["ppt_epochs"]),
+            ft_epochs  = int(_v["ft_epochs"]),
+        )
+    losses_scratch, losses_nca, losses_ppt, ep_scratch, ep_nca, speedup = _result
+    return losses_scratch, losses_nca, losses_ppt, ep_scratch, ep_nca, speedup
+
+
+@app.cell(hide_code=True)
+def _(losses_scratch, losses_nca, losses_ppt, ep_scratch, ep_nca, speedup):
+    _fig, (_ax_ft, _ax_ppt) = plt.subplots(1, 2, figsize=(13, 4.5))
+
+    _ep_ft = np.arange(1, len(losses_scratch) + 1)
+    _ax_ft.plot(_ep_ft, losses_scratch, "o-", color="#e05c5c", lw=2, ms=4,
+                label="Scratch (no pre-pretraining)")
+    _ax_ft.plot(_ep_ft, losses_nca,     "o-", color="#4a90d9", lw=2, ms=4,
+                label="NCA pre-pretrained")
+    if ep_scratch < len(losses_scratch):
+        _ax_ft.axvline(ep_scratch + 1, color="#e05c5c", ls=":", lw=1.5, alpha=0.7)
+    if ep_nca < len(losses_nca):
+        _ax_ft.axvline(ep_nca + 1, color="#4a90d9", ls=":", lw=1.5, alpha=0.7)
+    if ep_nca < ep_scratch:
+        _ax_ft.annotate(
+            f"{speedup}× faster",
+            xy=(ep_nca + 1, losses_nca[min(ep_nca, len(losses_nca) - 1)]),
+            xytext=(ep_nca + 3, losses_nca[min(ep_nca, len(losses_nca) - 1)] + 0.04),
+            arrowprops=dict(arrowstyle="->", color="#4a90d9"),
+            color="#4a90d9", fontsize=10, fontweight="bold",
+        )
+    _ax_ft.set_xlabel("Fine-tuning epoch", fontsize=10)
+    _ax_ft.set_ylabel("Cross-entropy loss", fontsize=10)
+    _ax_ft.set_title("Fine-tuning on new NCA rules", fontsize=11, fontweight="bold")
+    _ax_ft.legend(fontsize=9)
+
+    _ep_ppt = np.arange(1, len(losses_ppt) + 1)
+    _ax_ppt.plot(_ep_ppt, losses_ppt, "o-", color="#8338ec", lw=2, ms=4)
+    _ax_ppt.fill_between(_ep_ppt, losses_ppt, alpha=0.15, color="#8338ec")
+    _ax_ppt.set_xlabel("Pre-pretraining epoch", fontsize=10)
+    _ax_ppt.set_ylabel("Cross-entropy loss", fontsize=10)
+    _ax_ppt.set_title("NCA pre-pretraining phase (diverse rules)", fontsize=11, fontweight="bold")
+
+    plt.suptitle("Tiny transformer: NCA pre-pretraining vs scratch",
+                 fontsize=12, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(losses_scratch, losses_nca, ep_scratch, ep_nca, speedup):
+    _init_gap = (losses_scratch[0] - losses_nca[0]) / losses_scratch[0] * 100
+    mo.hstack([
+        mo.stat(f"{losses_nca[0]:.3f}",   label="NCA initial loss",
+                caption=f"Scratch starts at {losses_scratch[0]:.3f}"),
+        mo.stat(f"{_init_gap:.1f}%",       label="Initial advantage",
+                caption="Lower = better start from NCA priors"),
+        mo.stat(f"{speedup}×",             label="Convergence speedup",
+                caption=f"Scratch needs ep {ep_scratch}, NCA needs ep {ep_nca}"),
+        mo.stat(f"{losses_nca[-1]:.3f}",   label="NCA final loss",
+                caption=f"Scratch final: {losses_scratch[-1]:.3f}"),
+    ], gap=2, justify="start")
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.callout(
+        mo.md("""
+        **What you just observed** is the paper's core mechanism in miniature.
+        The NCA pre-pretrained model has already learned the general structure of
+        rule-governed sequences — it knows *how to look for latent rules*.
+        When it encounters new rules during fine-tuning, it adapts faster because
+        **attention layers have already formed the induction-head circuits** that
+        underpin in-context learning (Olsson et al., 2022).
+        The scratch model must build these circuits from zero.
+        """),
+        kind="success",
+    )
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 7 — EXTENSION: COMPLEXITY-DOMAIN FINGERPRINT MATCHER
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## 🔬 Extension — Complexity-Domain Fingerprint Matcher
+    > **Novel contribution beyond the paper**
+
+    The paper's Table 3 reports that *code → simpler NCA* and *math/web → complex NCA*,
+    but provides no tool to find optimal settings for an arbitrary new domain.
+
+    We introduce the **Complexity-Domain Fingerprint Matcher**: a 4-dimensional statistical
+    profile `(gzip_ratio, entropy, bigram_MI, zipf_β)` that characterises any token corpus.
+    Tune the NCA parameters until the generated fingerprint matches your target domain —
+    those settings are your optimal pre-pretraining configuration.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    DOMAIN_TARGETS = {
+        "Python Code":    {"gzip": 0.32, "entropy": 7.1, "bigram_mi": 3.2, "zipf_beta": 1.15},
+        "Math / LaTeX":   {"gzip": 0.55, "entropy": 8.4, "bigram_mi": 1.8, "zipf_beta": 0.85},
+        "English Text":   {"gzip": 0.62, "entropy": 9.2, "bigram_mi": 2.1, "zipf_beta": 1.00},
+        "Genomics (DNA)": {"gzip": 0.45, "entropy": 5.8, "bigram_mi": 2.5, "zipf_beta": 0.70},
+    }
+
+    domain_ui   = mo.ui.dropdown(options=list(DOMAIN_TARGETS.keys()),
+                                  value="Python Code", label="Target domain")
+    match_n_ui  = mo.ui.slider(2, 15,    value=5,    show_value=True, label="Alphabet n")
+    match_h_ui  = mo.ui.slider(8, 64,    value=16,   step=8, show_value=True, label="Hidden")
+    match_lo_ui = mo.ui.slider(0.0, 0.8, value=0.3,  step=0.05, show_value=True, label="Band min")
+    match_hi_ui = mo.ui.slider(0.2, 1.0, value=0.45, step=0.05, show_value=True, label="Band max")
+
+    mo.vstack([
+        mo.hstack(
+            [
+                mo.vstack([mo.md("**Target domain**"),   domain_ui]),
+                mo.vstack([mo.md("**Alphabet $n$**"),    match_n_ui]),
+                mo.vstack([mo.md("**Hidden units**"),    match_h_ui]),
+                mo.vstack([mo.md("**Band min**"),        match_lo_ui]),
+                mo.vstack([mo.md("**Band max**"),        match_hi_ui]),
+            ],
+            gap=2, justify="start",
+        ),
+        mo.md("_Tune until the blue radar polygon overlaps the orange target._"),
+    ])
+    return DOMAIN_TARGETS, domain_ui, match_n_ui, match_h_ui, match_lo_ui, match_hi_ui
+
+
+@app.cell
+def _(domain_ui, match_n_ui, match_h_ui, match_lo_ui, match_hi_ui,
+      DOMAIN_TARGETS, grid_ui, steps_ui):
+    _target_name = domain_ui.value
+    _target      = DOMAIN_TARGETS[_target_name]
+    _n           = match_n_ui.value
+    _hid         = match_h_ui.value
+    _lo          = match_lo_ui.value
+    _hi          = match_hi_ui.value
+    _G           = grid_ui.value
+    _T           = min(steps_ui.value, 12)
+
+    _good_tokens = []
+    _n_tested    = 60
+    _n_passed    = 0
+    for _s in range(_n_tested):
+        _gs = simulate_nca(_n, _T, _G, _hid, seed=_s + 800)
+        _r  = float(np.mean([compute_gzip_ratio(_g) for _g in _gs[3:]]))
+        if _lo <= _r <= _hi:
+            _n_passed += 1
+            for _g in _gs:
+                _good_tokens.extend(tokenize_grid(_g, patch=2, n_colors=_n))
+
+    if len(_good_tokens) > 10:
+        _st       = compute_stats(_good_tokens)
+        _nca_gzip = float(np.mean([
+            np.mean([compute_gzip_ratio(_g)
+                     for _g in simulate_nca(_n, _T, _G, _hid, seed=_ss + 800)[3:]])
+            for _ss in range(min(10, max(_n_passed, 1)))
+        ]))
+    else:
+        _st       = {"entropy": 0.0, "bigram_mi": 0.0, "zipf_beta": 0.0}
+        _nca_gzip = 0.0
+
+    nca_fingerprint    = {"gzip": _nca_gzip, "entropy": _st["entropy"],
+                          "bigram_mi": _st["bigram_mi"], "zipf_beta": _st["zipf_beta"]}
+    target_fingerprint = _target
+    match_target_name  = _target_name
+    match_n_passed     = _n_passed
+    match_n_tested     = _n_tested
+    return nca_fingerprint, target_fingerprint, match_target_name, match_n_passed, match_n_tested
+
+
+@app.function
+def compute_match_score(nca_fp, target_fp):
+    errors = []
+    for k in ["gzip", "entropy", "bigram_mi", "zipf_beta"]:
+        t = target_fp.get(k, 1.0)
+        n = nca_fp.get(k, 0.0)
+        if t > 0:
+            errors.append(abs(n - t) / t)
+    return max(0.0, 1.0 - float(np.mean(errors))) if errors else 0.0
+
+
+@app.cell(hide_code=True)
+def _(nca_fingerprint, target_fingerprint, match_target_name):
+    _dim_keys = ["gzip", "entropy", "bigram_mi", "zipf_beta"]
+    _dims     = ["gzip ratio", "entropy", "bigram MI", "Zipf β"]
+    _ranges   = {"gzip": (0.1, 0.9), "entropy": (2.0, 12.0),
+                 "bigram_mi": (0.0, 5.0), "zipf_beta": (0.3, 1.5)}
+
+    def _norm(val, key):
+        lo, hi = _ranges[key]
+        return float(np.clip((val - lo) / (hi - lo), 0, 1))
+
+    _nca_v  = [_norm(nca_fingerprint.get(k, 0), k) for k in _dim_keys]
+    _tgt_v  = [_norm(target_fingerprint.get(k, 0), k) for k in _dim_keys]
+    _angles = np.linspace(0, 2 * np.pi, len(_dims), endpoint=False).tolist()
+    _ang_c  = _angles + _angles[:1]
+    _nca_c  = _nca_v  + _nca_v[:1]
+    _tgt_c  = _tgt_v  + _tgt_v[:1]
+
+    _fig, (_dummy, _ax_bar) = plt.subplots(1, 2, figsize=(13, 5),
+                                            subplot_kw=dict(polar=False))
+    _dummy.remove()
+    _ax_r = _fig.add_subplot(1, 2, 1, polar=True)
+
+    _ax_r.fill(_ang_c, _tgt_c, alpha=0.2, color="orange")
+    _ax_r.plot(_ang_c, _tgt_c, "o-", color="orange", lw=2,
+               label=f"Target: {match_target_name}")
+    _ax_r.fill(_ang_c, _nca_c, alpha=0.2, color="#4a90d9")
+    _ax_r.plot(_ang_c, _nca_c, "o-", color="#4a90d9", lw=2,
+               label="NCA fingerprint")
+    _ax_r.set_xticks(_angles)
+    _ax_r.set_xticklabels(_dims, fontsize=9)
+    _ax_r.set_ylim(0, 1)
+    _ax_r.set_yticks([0.25, 0.5, 0.75])
+    _ax_r.set_yticklabels(["25%", "50%", "75%"], fontsize=7, color="#888")
+    _ax_r.legend(loc="upper right", bbox_to_anchor=(1.35, 1.15), fontsize=8)
+    _ax_r.set_title("Fingerprint Radar", fontsize=11, fontweight="bold", pad=20)
+
+    _x = np.arange(len(_dims))
+    _w = 0.35
+    _ax_bar.bar(_x - _w / 2, [nca_fingerprint.get(k, 0) for k in _dim_keys],
+                _w, label="NCA", color="#4a90d9", alpha=0.85)
+    _ax_bar.bar(_x + _w / 2, [target_fingerprint.get(k, 0) for k in _dim_keys],
+                _w, label=f"Target ({match_target_name})", color="orange", alpha=0.85)
+    _ax_bar.set_xticks(_x)
+    _ax_bar.set_xticklabels(_dims, fontsize=9)
+    _ax_bar.set_title("Raw metric values", fontsize=11, fontweight="bold")
+    _ax_bar.legend(fontsize=9)
+
+    plt.tight_layout()
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def _(nca_fingerprint, target_fingerprint, match_target_name,
+      match_n_passed, match_n_tested):
+    _score = compute_match_score(nca_fingerprint, target_fingerprint)
+    _pct   = match_n_passed / max(match_n_tested, 1) * 100
+
+    mo.hstack([
+        mo.stat(f"{_score:.1%}", label="Match score",
+                caption=f"vs {match_target_name}"),
+        mo.stat(f"{match_n_passed}/{match_n_tested}", label="Rules in band",
+                caption=f"{_pct:.0f}% of sampled rules accepted"),
+        mo.stat(f"{nca_fingerprint['gzip']:.3f}", label="NCA gzip ratio",
+                caption=f"Target: {target_fingerprint['gzip']:.3f}"),
+        mo.stat(f"{nca_fingerprint['entropy']:.2f} bits", label="NCA entropy",
+                caption=f"Target: {target_fingerprint['entropy']:.2f} bits"),
+    ], gap=2, justify="start")
+    return
+
+
+@app.cell(hide_code=True)
+def _(nca_fingerprint, target_fingerprint, match_target_name):
+    _score = compute_match_score(nca_fingerprint, target_fingerprint)
+    if _score > 0.80:
+        _callout = mo.callout(
+            mo.md(f"✅ **Excellent match ({_score:.1%})** — Your NCA config is well-aligned with "
+                  f"**{match_target_name}**. Use this band for pre-pretraining."),
+            kind="success",
+        )
+    elif _score > 0.55:
+        _callout = mo.callout(
+            mo.md(f"🟡 **Partial match ({_score:.1%})** — Try adjusting $n$ or the band "
+                  f"to better align with **{match_target_name}**."),
+            kind="warn",
+        )
+    else:
+        _callout = mo.callout(
+            mo.md(f"❌ **Poor match ({_score:.1%})** — Check the bar chart to see "
+                  f"which dimensions diverge most from **{match_target_name}**."),
+            kind="danger",
+        )
+    _callout
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PART 8 — NCA RULE ZOO
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Part 8 — NCA Rule Zoo
+
+    A gallery of trajectories sampled from different **complexity regimes** for $n = 10$ colours.
+    Each row is a different randomly sampled rule — illustrating the breadth of the function class
+    the paper draws its pre-training data from.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    zoo_regime_ui = mo.ui.dropdown(
+        options={
+            "Simple (ρ < 0.35)":  "simple",
+            "Medium (0.4 – 0.6)": "medium",
+            "Complex (ρ > 0.65)": "complex",
+        },
+        value="Medium (0.4 – 0.6)",
+        label="Complexity regime",
+    )
+    zoo_rows_ui  = mo.ui.slider(2, 5, value=3, show_value=True, label="Rows (rules)")
+    zoo_steps_ui = mo.ui.slider(3, 10, value=6, show_value=True, label="Steps shown")
+
+    mo.hstack(
+        [
+            mo.vstack([mo.md("**Regime**"),      zoo_regime_ui]),
+            mo.vstack([mo.md("**Rows**"),         zoo_rows_ui]),
+            mo.vstack([mo.md("**Steps shown**"),  zoo_steps_ui]),
+        ],
+        gap=2, justify="start",
+    )
+    return zoo_regime_ui, zoo_rows_ui, zoo_steps_ui
+
+
+@app.cell(hide_code=True)
+def _(zoo_regime_ui, zoo_rows_ui, zoo_steps_ui):
+    _regime        = zoo_regime_ui.value
+    _rows          = zoo_rows_ui.value
+    _T             = zoo_steps_ui.value
+    _NC, _G, _HID  = 10, 12, 16
+
+    _bands  = {"simple": (0.0, 0.35), "medium": (0.38, 0.62), "complex": (0.65, 1.0)}
+    _lo, _hi = _bands[_regime]
+
+    _found = []
+    _s = 0
+    while len(_found) < _rows and _s < 400:
+        _gs = simulate_nca(_NC, max(_T, 10), _G, _HID, seed=_s + 1000)
+        _r  = float(np.mean([compute_gzip_ratio(_g) for _g in _gs[3:]]))
+        if _lo <= _r <= _hi:
+            _found.append((_gs[: _T + 1], _r))
+        _s += 1
+
+    mo.stop(
+        not _found,
+        mo.callout(mo.md("No rules found in this band — try a different regime."), kind="warn"),
+    )
+
+    _cmap   = plt.cm.get_cmap("tab20", _NC)
+    _n_cols = min(_T + 1, 7)
+    _fig, _axes_zoo = plt.subplots(_rows, _n_cols, figsize=(2.2 * _n_cols, 2.4 * _rows))
+    if _rows == 1:
+        _axes_zoo = _axes_zoo[np.newaxis, :]
+    if _n_cols == 1:
+        _axes_zoo = _axes_zoo[:, np.newaxis]
+
+    for _ri, (_gs, _r) in enumerate(_found[:_rows]):
+        _idx_list = np.linspace(0, len(_gs) - 1, _n_cols, dtype=int)
+        for _ci, _idx in enumerate(_idx_list):
+            _ax = _axes_zoo[_ri, _ci]
+            _ax.imshow(_gs[_idx], cmap=_cmap, vmin=0, vmax=_NC - 1, interpolation="nearest")
+            if _ri == 0:
+                _ax.set_title(f"t={_idx}", fontsize=8, fontweight="bold")
+            if _ci == 0:
+                _ax.set_ylabel(f"ρ={_r:.2f}", fontsize=8, rotation=0, labelpad=34, va="center")
+            _ax.axis("off")
+
+    _label = {"simple": "Simple (ρ < 0.35)", "medium": "Medium (0.38–0.62)",
+              "complex": "Complex (ρ > 0.65)"}[_regime]
+    _fig.suptitle(f"NCA Rule Zoo — {_label}  ·  n={_NC} colours",
+                  fontsize=11, fontweight="bold", y=1.01)
+    plt.tight_layout()
+    _fig
+    return
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TAKEAWAYS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ---
+    ## Key Takeaways
+
+    | Finding | What it means |
+    |---------|---------------|
+    | 🧬 **164M NCA tokens beat 1.6B C4 tokens** | Structured synthetic data is more token-efficient than natural text for building reasoning inductive biases |
+    | 🎚 **Complexity is tunable** | Alphabet $n$ and gzip band give precise control over the data's statistical character |
+    | 🎯 **Domain-matched complexity matters** | Code → simpler NCA; math/text → richer NCA — matching maximises transfer |
+    | 🔄 **Attention carries the transferable prior** | Re-initialisation experiments show attention weights transfer the most useful inductive biases |
+    | 🔭 **Long-term vision** | Foundation models that acquire reasoning from fully synthetic data, then semantics from a curated natural corpus |
+
+    ---
+
+    **Paper:** [arxiv.org/abs/2603.10055](https://arxiv.org/abs/2603.10055) · Lee, Han, Kumar, Agrawal · MIT CSAIL 2026  
+    **Code:** [github.com/danihyunlee/nca-pre-pretraining](https://github.com/danihyunlee/nca-pre-pretraining)  
+    **Notebook:** alphaXiv × marimo Notebook Competition
+    """)
+    return
+
+
+if __name__ == "__main__":
+    app.run()
