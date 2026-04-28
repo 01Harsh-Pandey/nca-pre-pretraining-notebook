@@ -538,7 +538,7 @@ def cell_fig3_intro():
 def cell_fig3_token_selector():
     token_selector = mo.ui.multiselect(
         options=list(FIG3_DATA.keys()),
-        value=["magic", "the", "at", "Ron", "law", "how"],
+        value=["magic", "the", "his", "in", "law", "how"],
         label="Tokens to display",
     )
     return (token_selector,)
@@ -937,19 +937,21 @@ def cell_pareto_chart(step_highlight_ui, benchmark_pareto_ui):
         .encode(x="x:Q", y="y:Q", text="label:N")
     )
 
-    (_ideal_box + _line + _points + _step_labels + _labels + _ideal_text)
-    .properties(
-        width=620, height=380,
-        title=alt.TitleParams(
-            "The Forgetting Frontier: Familiarity vs Benchmark Preservation",
-            subtitle=("Each point = one fine-tuning checkpoint. "
-                      "Bottom-right = best: low familiarity, high benchmark. "
-                      "Drag the step slider above to walk the trajectory."),
-            subtitleFontSize=11,
-        ),
+    (
+        (_ideal_box + _line + _points + _step_labels + _labels + _ideal_text)
+        .properties(
+            width=620, height=380,
+            title=alt.TitleParams(
+                "The Forgetting Frontier: Familiarity vs Benchmark Preservation",
+                subtitle=("Each point = one fine-tuning checkpoint. "
+                          "Bottom-right = best: low familiarity, high benchmark. "
+                          "Drag the step slider above to walk the trajectory."),
+                subtitleFontSize=11,
+            ),
+        )
+        .configure_view(strokeWidth=0)
+        .configure_axis(grid=False)
     )
-    .configure_view(strokeWidth=0)
-    .configure_axis(grid=False)
     return
 
 
